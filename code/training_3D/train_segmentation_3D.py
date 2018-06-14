@@ -7,19 +7,22 @@ target image can be any other brain image.
 """
 
 import numpy as np
-import os
+import os, sys, time
 import matplotlib.pyplot as plt
 
 from keras import callbacks as cbks
 
-base_dir = '/users/ncullen/desktop/projects/unet-ants/'
+base_dir = 'F:/project/Unet-ants/'
 os.chdir(base_dir+'code/')
 
 # local imports
+sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath( __file__ )), '..')))
 from sampling import DataLoader, CSVDataset
 from sampling import transforms as tx
 from models import create_unet_model3D
-
+'''https://stackoverflow.com/questions/37893755/tensorflow-set-cuda-visible-devices-within-jupyter'''
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152 For using cpu 
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 data_dir = base_dir + 'data_3D/'
 results_dir = base_dir+'results_3D/'
@@ -45,9 +48,9 @@ input_tx = tx.MinMaxScaler((-1,1)) # scale between -1 and 1
 
 target_tx = tx.OneHot() # convert segmentation image to One-Hot representation for cross-entropy loss
 
-# use a co-transform, meaning the same transform will be applied to input+target images at the same time 
+# use a co-transform, meaning the same transform will be applied to input+target images at the same time
 # this is necessary since Affine transforms have random parameter draws which need to be shared
-dataset = CSVDataset(filepath=data_dir+'image_filemap.csv', 
+dataset = CSVDataset(filepath=data_dir+'image_filemap.csv',
                     base_path=os.path.join(data_dir,'images'), # this path will be appended to all of the filenames in the csv file
                     input_cols=['Images'], # column in dataframe corresponding to inputs (can be an integer also)
                     target_cols=['Segmentations'],# column in dataframe corresponding to targets (can be an integer also)
@@ -64,7 +67,7 @@ val_data.set_co_transform(tx.Compose([tx.TypeCast('float32'),
                                       tx.ExpandDims(axis=-1)]))
 
 # create a dataloader .. this is basically a keras DataGenerator -> can be fed to `fit_generator`
-batch_size = 10
+batch_size = 1
 train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True)
 
@@ -79,11 +82,11 @@ model = create_unet_model3D(input_image_size=train_data[0][0].shape, n_labels=n_
 callbacks = [cbks.ModelCheckpoint(results_dir+'segmentation-weights.h5', monitor='val_loss', save_best_only=True),
             cbks.ReduceLROnPlateau(monitor='val_loss', factor=0.1)]
 
-model.fit_generator(generator=iter(train_loader), steps_per_epoch=np.ceil(len(train_data)/batch_size), 
-                    epochs=100, verbose=1, callbacks=callbacks, 
-                    shuffle=True, 
-                    validation_data=iter(val_loader), validation_steps=np.ceil(len(val_data)/batch_size), 
-                    class_weight=None, max_queue_size=10, 
+model.fit_generator(generator=iter(train_loader), steps_per_epoch=np.ceil(len(train_data)/batch_size),
+                    epochs=100, verbose=1, callbacks=callbacks,
+                    shuffle=True,
+                    validation_data=iter(val_loader), validation_steps=np.ceil(len(val_data)/batch_size),
+                    class_weight=None, max_queue_size=10,
                     workers=1, use_multiprocessing=False,  initial_epoch=0)
 
 
@@ -93,6 +96,3 @@ model.fit_generator(generator=iter(train_loader), steps_per_epoch=np.ceil(len(tr
 #val_x, val_y = val_data.load()
 #real_val_x, real_val_y = val_data.load()
 #real_val_y_pred = model.predict(real_val_x)
-
-
-
