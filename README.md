@@ -37,7 +37,7 @@ http://theorangeduck.com/page/neural-network-not-working
 http://www.samcoope.com/posts/machine_learning_research
 
 ## Add 2018-6-14
-- Requirements
+Requirements
 - Pillow
 - pandas
 - matplotlib
